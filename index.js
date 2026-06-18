@@ -1,5 +1,7 @@
 'use strict'
 
+const { Address, parseFrom } = require ('@haraka/email-address');
+
 var fs = require("fs");
 var path = require("path");
 var pino = require('pino');
@@ -107,7 +109,13 @@ exports.handle_delivered = function (next, hmail, params) {
 
   // Remove < and > from the email address. (eg <hello@user.com>)
   meta.recipient = rcpt_to.original.slice(1, -1)
-  meta.from = todo.mail_from.original.slice(1, -1);
+  meta.envelope_from = todo.mail_from.original.slice(1, -1);
+  if (header && header.get("from"))
+    meta.from = parseFrom(header.get("from"))[0].address;
+  else if (hmail.todo.notes.header?.headers.from)
+    meta.from = parseFrom(hmail.todo.notes.header.headers.from[0])[0].address;
+  else
+    meta.from = "unknown";
 
   if (header && header.get("subject"))
     meta.subject = header.get_decoded('subject');
@@ -141,7 +149,13 @@ exports.handle_deferred = function (next, hmail, params) {
 
   // Remove < and > from the email address. (eg <hello@user.com>)
   meta.recipient = rcpt_to.original.slice(1, -1)
-  meta.from = todo.mail_from.original.slice(1, -1);
+  meta.envelope_from = todo.mail_from.original.slice(1, -1);
+  if (header && header.get("from"))
+    meta.from = parseFrom(header.get("from"))[0].address;
+  else if (hmail.todo.notes.header?.headers.from)
+    meta.from = parseFrom(hmail.todo.notes.header.headers.from[0])[0].address;
+  else
+    meta.from = "unknown";
 
   if (header && header.get("subject"))
     meta.subject = header.get_decoded('subject');
@@ -192,7 +206,13 @@ exports.handle_bounced = function (next, hmail, error) {
 
   // Remove < and > from the email address. (eg <hello@user.com>)
   meta.recipient = rcpt_to.original.slice(1, -1)
-  meta.from = todo.mail_from.original.slice(1, -1);
+  meta.envelope_from = todo.mail_from.original.slice(1, -1);
+  if (header && header.get("from"))
+    meta.from = parseFrom(header.get("from"))[0].address;
+  else if (hmail.todo.notes.header?.headers.from)
+    meta.from = parseFrom(hmail.todo.notes.header.headers.from[0])[0].address;
+  else
+    meta.from = "unknown";
 
   if (header && header.get("subject"))
     meta.subject = header.get_decoded('subject');
