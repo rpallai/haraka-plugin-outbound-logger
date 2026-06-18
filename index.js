@@ -107,8 +107,7 @@ exports.handle_delivered = function (next, hmail, params) {
   meta.smtp_delay = params[3] || "";
   meta.smtp_port = params[4] || "";
 
-  // Remove < and > from the email address. (eg <hello@user.com>)
-  meta.recipient = rcpt_to.original.slice(1, -1)
+  meta.recipient = `${rcpt_to.user}@${rcpt_to.host}`;
   meta.envelope_from = todo.mail_from.original.slice(1, -1);
   if (header && header.get("from"))
     meta.from = parseFrom(header.get("from"))[0].address;
@@ -119,7 +118,7 @@ exports.handle_delivered = function (next, hmail, params) {
 
   if (header && header.get("subject"))
     meta.subject = header.get_decoded('subject');
-  else if (hmail.todo.notes.header.headers.subject)
+  else if (hmail.todo.notes.header?.headers.subject)
     meta.subject = hmail.todo.notes.header.headers_decoded.subject[0];
   else
     meta.subject = "unknown";
@@ -147,8 +146,7 @@ exports.handle_deferred = function (next, hmail, params) {
   meta.job_id = todo.uuid;
   meta.queue_time = (new Date(todo.queue_time)).toISOString();
 
-  // Remove < and > from the email address. (eg <hello@user.com>)
-  meta.recipient = rcpt_to.original.slice(1, -1)
+  meta.recipient = `${rcpt_to.user}@${rcpt_to.host}`;
   meta.envelope_from = todo.mail_from.original.slice(1, -1);
   if (header && header.get("from"))
     meta.from = parseFrom(header.get("from"))[0].address;
@@ -159,7 +157,7 @@ exports.handle_deferred = function (next, hmail, params) {
 
   if (header && header.get("subject"))
     meta.subject = header.get_decoded('subject');
-  else if (hmail.todo.notes.header.headers.subject)
+  else if (hmail.todo.notes.header?.headers.subject)
     meta.subject = hmail.todo.notes.header.headers_decoded.subject[0];
   else
     meta.subject = "unknown";
@@ -204,8 +202,7 @@ exports.handle_bounced = function (next, hmail, error) {
   meta.job_id = todo.uuid;
   meta.queue_time = (new Date(todo.queue_time)).toISOString();
 
-  // Remove < and > from the email address. (eg <hello@user.com>)
-  meta.recipient = rcpt_to.original.slice(1, -1)
+  meta.recipient = `${rcpt_to.user}@${rcpt_to.host}`;
   meta.envelope_from = todo.mail_from.original.slice(1, -1);
   if (header && header.get("from"))
     meta.from = parseFrom(header.get("from"))[0].address;
@@ -216,7 +213,7 @@ exports.handle_bounced = function (next, hmail, error) {
 
   if (header && header.get("subject"))
     meta.subject = header.get_decoded('subject');
-  else if (hmail.todo.notes.header.headers.subject)
+  else if (hmail.todo.notes.header?.headers.subject)
     meta.subject = hmail.todo.notes.header.headers_decoded.subject[0];
   else
     meta.subject = "unknown";
