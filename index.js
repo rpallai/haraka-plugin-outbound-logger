@@ -163,9 +163,11 @@ exports.handle_deferred = function (next, hmail, params) {
     meta.subject = "unknown";
 
   // Log the reasons for deferring.
-  meta.dsn_status = rcpt_to.dsn_smtp_code || rcpt_to.dsn_status;
-  meta.dsn_message = rcpt_to.dsn_smtp_response;
+  meta.dsn_code = rcpt_to.dsn_smtp_code || rcpt_to.dsn_code;
+  meta.dsn_status = rcpt_to.dsn_status;
+  meta.dsn_message = rcpt_to.dsn_smtp_response || rcpt_to.dsn_msg;
   meta.dsn_action = rcpt_to.dsn_action;
+  meta.dsn_remote_mta = rcpt_to.dsn_remote_mta;
 
   if (rcpt_to.hasOwnProperty("reason"))
     meta.undelivered_reason = rcpt_to.reason;
@@ -219,9 +221,11 @@ exports.handle_bounced = function (next, hmail, error) {
     meta.subject = "unknown";
 
   // Log the reasons for deferring.
-  meta.dsn_status = rcpt_to.dsn_smtp_code || rcpt_to.dsn_status;
-  meta.dsn_message = rcpt_to.dsn_smtp_response;
+  meta.dsn_code = rcpt_to.dsn_smtp_code || rcpt_to.dsn_code;
+  meta.dsn_status = rcpt_to.dsn_status;
+  meta.dsn_message = rcpt_to.dsn_smtp_response || rcpt_to.dsn_msg;
   meta.dsn_action = rcpt_to.dsn_action;
+  meta.dsn_remote_mta = rcpt_to.dsn_remote_mta;
 
   if (rcpt_to.hasOwnProperty("reason"))
     meta.undelivered_reason = rcpt_to.reason;
