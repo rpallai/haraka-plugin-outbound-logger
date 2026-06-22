@@ -106,6 +106,7 @@ exports.handle_delivered = function (next, hmail, params) {
   meta.smtp_response = params[2] || "";
   meta.smtp_delay = params[3] || "";
   meta.smtp_port = params[4] || "";
+  meta.smtp_failures = hmail.num_failures;
 
   meta.recipient = `${rcpt_to.user}@${rcpt_to.host}`;
   meta.envelope_from = todo.mail_from.original.slice(1, -1);
