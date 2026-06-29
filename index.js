@@ -8,6 +8,7 @@ var pino = require('pino');
 var cfg;
 
 exports.register = function () {
+  this.inherits('haraka-plugin-redis')
   var plugin = this;
 
   plugin.load_outbound_logger_ini();
@@ -23,6 +24,11 @@ exports.register = function () {
   plugin.register_hook('deferred', 'handle_deferred');
   // https://haraka.github.io/core/Outbound/#the-bounce-hook
   plugin.register_hook('bounce', 'handle_bounced');
+
+  if (cfg.main.log_limits === true) {
+    this.register_hook('init_master', 'init_redis_plugin')
+    this.register_hook('init_child', 'init_redis_plugin')
+  }
 };
 
 //-------------------------------------------------------------------------------------------------------------------
@@ -84,7 +90,37 @@ exports.set_header_to_note = function (next, connection) {
   return next();
 };
 
-exports.handle_delivered = function (next, hmail, params) {
+/*
+ * copied from limit plugin
+ */
+
+function getOutDom(hmail) {
+  // outbound isn't internally consistent using hmail.domain and hmail.todo.domain.
+  // TODO: fix haraka/Haraka/outbound/HMailItem to be internally consistent.
+  return hmail?.todo?.domain || hmail?.domain
+}
+
+function getOutKey(domain) {
+  return `outbound-rate:${domain}`
+}
+
+exports.limit_get_outbound_process_count = async function (hmail) {
+  if (!this.db) return
+
+  const outDom = getOutDom(hmail)
+  if (!outDom) return
+  const outKey = getOutKey(outDom)
+
+  try {
+    let count = await this.db.hGet(outKey, 'TOTAL')
+    count = parseInt(count, 10)
+    return count
+  } catch (err) {
+    this.logerror(`limit_get_outbound_process_count: ${err}`)
+  }
+}
+
+exports.handle_delivered = async function (next, hmail, params) {
   var plugin = this;
   var todo = hmail.todo;
   var header = hmail.notes.header;
@@ -99,6 +135,10 @@ exports.handle_delivered = function (next, hmail, params) {
   meta.type = "delivered"
   meta.job_id = todo.uuid;
   meta.queue_time = (new Date(todo.queue_time)).toISOString();
+
+  if (cfg.main.log_limits === true) {
+    meta.recipient_domain_concurrency = await plugin.limit_get_outbound_process_count(hmail)
+  }
 
   // params is an array of host, ip, response, delay, port, mode, ok_recips, secured.
   meta.smtp_host = params[0] || "";
@@ -131,7 +171,7 @@ exports.handle_delivered = function (next, hmail, params) {
   return next();
 };
 
-exports.handle_deferred = function (next, hmail, params) {
+exports.handle_deferred = async function (next, hmail, params) {
   var plugin = this;
   var todo = hmail.todo;
   var header = hmail.notes.header;
@@ -146,6 +186,10 @@ exports.handle_deferred = function (next, hmail, params) {
   meta.type = "deferred"
   meta.job_id = todo.uuid;
   meta.queue_time = (new Date(todo.queue_time)).toISOString();
+
+  if (cfg.main.log_limits === true) {
+    meta.recipient_domain_concurrency = await plugin.limit_get_outbound_process_count(hmail)
+  }
 
   meta.recipient = `${rcpt_to.user}@${rcpt_to.host}`;
   meta.envelope_from = todo.mail_from.original.slice(1, -1);
@@ -188,7 +232,7 @@ exports.handle_deferred = function (next, hmail, params) {
   return next();
 };
 
-exports.handle_bounced = function (next, hmail, error) {
+exports.handle_bounced = async function (next, hmail, error) {
   var plugin = this;
   var todo = hmail.todo;
   var header = hmail.notes.header;
@@ -204,6 +248,10 @@ exports.handle_bounced = function (next, hmail, error) {
   meta.type = "bounced"
   meta.job_id = todo.uuid;
   meta.queue_time = (new Date(todo.queue_time)).toISOString();
+
+  if (cfg.main.log_limits === true) {
+    meta.recipient_domain_concurrency = await plugin.limit_get_outbound_process_count(hmail)
+  }
 
   meta.recipient = `${rcpt_to.user}@${rcpt_to.host}`;
   meta.envelope_from = todo.mail_from.original.slice(1, -1);
@@ -252,6 +300,8 @@ exports.handle_bounced = function (next, hmail, error) {
 
 exports.shutdown = function () {
   plugin.loginfo("Shutting down.");
+  if (this.db)
+    this.db.quit()
 };
 
 //-------------------------------------------------------------------------------------------------------------------
@@ -266,6 +316,7 @@ exports.load_outbound_logger_ini = function () {
   cfg = plugin.config.get("outbound_logger.ini", {
     booleans: [
       '+stop_at_bounce',         // plugins.cfg.main.stop_at_bounce=true
+      '-log_limits',             // plugins.cfg.main.log_limits=false
       '-stdout.enable',          // plugins.cfg.stdout.enable=false
       '-file.enable',            // plugins.cfg.file.enable=false
       '+file.sync',              // plugins.cfg.file.sync=true
@@ -273,5 +324,10 @@ exports.load_outbound_logger_ini = function () {
   },
     function () {
       plugin.register();
-    });
+    }
+  );
+
+  if (cfg.main.log_limits === true) {
+    this.merge_redis_ini()
+  }
 };
